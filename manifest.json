@@ -1,0 +1,18 @@
+{
+  "name": "Fit21 - 每日感恩生命樹",
+  "short_name": "Fit21",
+  "description": "以 21 天的微光，長成一棵安定心靈的大樹。1件感恩1片葉，21件成大樹。",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#FAF8F5",
+  "theme_color": "#FAF8F5",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Fit21 - 每日感恩生命樹</title>
+  
+  <!-- PWA & Mobile Meta Tags -->
+  <meta name="description" content="Fit21 每日感恩生命樹：1件感恩1片葉子，21件長成大樹，養成心靈正向微習慣。">
+  <meta name="theme-color" content="#FAF8F5">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Fit21">
+  <link rel="manifest" href="./manifest.json">
+  <link rel="icon" type="image/svg+xml" href="./icon.svg">
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            washi: '#FAF8F5',
+            brand: '#3D5A45',
+            'brand-dark': '#293C2E',
+            ink: '#2D2B2A',
+            muted: '#767069',
+            ochre: '#C88E3E',
+            cherry: '#D4838F'
+          }
+        }
+      }
+    }
+  </script>
+  
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;600&display=swap');
+    .font-brand {
+      font-family: 'Noto Serif TC', serif, system-ui;
+      letter-spacing: 0.22em;
+    }
+    .washi-pattern {
+      background-color: #FAF8F5;
+      background-image: radial-gradient(#E8E2D8 0.75px, transparent 0.75px);
+      background-size: 16px 16px;
+    }
+    /* Disable pull-to-refresh on mobile app feel */
+    body {
+      overscroll-behavior-y: contain;
+      -webkit-tap-highlight-color: transparent;
+    }
+  </style>
+</head>
+<body class="washi-pattern text-ink min-h-screen antialiased select-none p-3 sm:p-6 flex flex-col justify-between">
+  
+  <!-- Main App Shell -->
+  <div class="max-w-2xl mx-auto w-full bg-white/90 border border-[#E3DDD4] rounded-3xl p-4 sm:p-6 shadow-xl backdrop-blur-md flex flex-col gap-4">
+    
+    <!-- Header -->
+    <header class="flex items-center justify-between border-b border-[#EAE4DC] pb-4">
+      <div class="flex items-center gap-3">
+        <!-- Fit21 One-Line Heart Logo -->
+        <div class="w-10 h-10 rounded-2xl bg-washi border border-[#E2DDD3] shadow-sm flex items-center justify-center p-1.5 flex-shrink-0">
+          <svg viewBox="0 0 100 100" class="w-full h-full stroke-ink fill-none stroke-[2.4] stroke-linecap-round stroke-linejoin-round">
+            <path d="M 50 36 C 45 44 45 52 50 58 C 55 52 55 44 50 36 C 42 20 18 22 18 42 C 18 62 38 78 50 88 C 62 78 82 62 82 42 C 82 22 58 20 50 36 Z" />
+            <path d="M 50 88 C 47 93 48 97 50 99 C 52 97 53 93 50 88 Z" />
+          </svg>
+        </div>
+
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="font-brand font-bold text-lg sm:text-xl text-[#242220]">FIT21</h1>
+            <span class="text-[10px] px-2 py-0.5 rounded-full bg-brand/10 text-brand font-medium border border-brand/20">
+              感恩生命樹
+            </span>
+          </div>
+          <p class="text-[11px] text-muted mt-0.5">1 件感恩 1 片葉 · 21 件成大樹</p>
+        </div>
+      </div>
+
+      <!-- Stats Pill -->
+      <div class="bg-washi border border-[#E2DDD3] px-3 py-1.5 rounded-2xl shadow-sm flex items-center gap-2.5">
+        <div class="flex flex-col text-right">
+          <span class="text-[9px] text-muted">森林</span>
+          <span class="text-xs font-bold text-brand" id="forestStat">0 棵</span>
+        </div>
+        <div class="h-5 w-[1px] bg-[#E8E2D7]"></div>
+        <div class="flex flex-col text-left">
+          <span class="text-[9px] text-muted">本樹</span>
+          <span class="text-xs font-bold text-ochre" id="leafStat">0 / 21</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Canvas Tree View -->
+    <div class="relative w-full aspect-[32/34] max-w-[320px] mx-auto rounded-3xl overflow-hidden border border-[#E3DDD4] shadow-inner bg-gradient-to-b from-washi via-[#F4EFE8] to-[#EDE6DC]">
+      <canvas id="treeCanvas" width="320" height="340" class="w-full h-full cursor-pointer relative z-10"></canvas>
+
+      <!-- Milestone Modal: 21 Items Reached -->
+      <div id="fullTreeModal" class="absolute inset-0 bg-ink/85 backdrop-blur-md rounded-3xl z-30 flex flex-col items-center justify-center p-5 text-center hidden opacity-0 transition-opacity duration-300">
+        <span class="text-4xl mb-1">🌳✨</span>
+        <h3 class="text-base font-bold text-[#F8E7CD] mb-0.5" id="modalTitle">第 1 棵大樹圓滿長成了！</h3>
+        <p class="text-xs text-[#A3D9A5] font-medium mb-1.5" id="modalSub">已收集齊 21 件感恩，枝繁葉茂，蔚然成蔭</p>
+        <p class="text-[11px] text-[#EDE8DF] mb-4 px-2 leading-relaxed">
+          生活再忙，也別忘了停下來對日常說聲謝謝。<br>將這份溫暖分享到 LINE 群，傳遞微光吧！
+        </p>
+
+        <div class="flex flex-col gap-2 w-full max-w-[230px]">
+          <button id="btnCopyLine" class="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-brand to-brand-dark hover:brightness-110 text-white font-bold text-xs shadow-lg shadow-black/20 flex items-center justify-center gap-1.5 active:scale-[0.98] transition-all">
+            <span>📋 一鍵複製 LINE 報喜文字</span>
+          </button>
+
+          <button id="btnNextTree" class="w-full py-2 px-3 rounded-xl bg-white/20 hover:bg-white/30 text-white text-xs font-medium transition-colors flex items-center justify-center gap-1">
+            <span id="btnNextLabel">🌱 種植第 2 棵樹（邁向 42 篇）</span>
+          </button>
+        </div>
+
+        <div id="copyToast" class="text-[10px] text-[#A3D9A5] mt-2.5 font-semibold hidden">
+          ✅ 已複製到剪貼簿！可直接貼在 LINE 群！
+        </div>
+      </div>
+    </div>
+
+    <!-- Input Section -->
+    <div class="bg-washi p-3.5 sm:p-4 rounded-2xl border border-[#E3DDD4] shadow-sm flex flex-col gap-2.5">
+      <div class="flex items-center justify-between text-xs text-muted font-medium">
+        <span class="font-semibold text-ink flex items-center gap-1.5">
+          <span>✍️ 記下一件感恩的事</span>
+          <span class="text-[10px] text-brand bg-brand/10 px-1.5 py-0.5 rounded font-mono">1件 = 1葉</span>
+        </span>
+        <button id="btnPrompt" class="text-brand hover:text-brand-dark text-xs flex items-center gap-1 transition-colors">
+          <span>🎲 換個靈感</span>
+        </button>
+      </div>
+
+      <div class="bg-white p-2.5 rounded-xl border border-[#E8E2D8] focus-within:border-brand transition-colors">
+        <textarea id="noteInput" rows="2" 
+          placeholder="今天有什麼讓你感到被溫柔照拂的小事？（例如：晨光、熱咖啡、一句好話...）" 
+          class="w-full text-xs sm:text-sm bg-transparent focus:outline-none text-ink placeholder:text-[#A8A196] resize-none leading-relaxed"></textarea>
+      </div>
+
+      <button id="btnSprout" class="w-full py-2.5 px-4 rounded-xl bg-brand hover:bg-brand-dark text-white font-medium text-xs sm:text-sm shadow-md shadow-brand/20 active:scale-[0.98] transition-all flex items-center justify-center gap-1.5">
+        <span>🌱 萌發 1 片感恩葉片（+1 葉）</span>
+      </button>
+
+      <div id="sproutNotice" class="text-xs text-center py-1 rounded-lg bg-brand/10 text-brand border border-brand/20 hidden">
+        ✨ 第 <span id="toastCount">1</span> 片葉片已在樹梢靜靜舒展！
+      </div>
+    </div>
+
+    <!-- Leaf Memory Viewer -->
+    <div id="memoryCard" class="bg-white border border-[#E3DDD4] rounded-2xl p-3.5 min-h-[70px] flex flex-col justify-center shadow-sm transition-all">
+      <div class="flex items-center gap-2 text-xs text-brand font-semibold mb-1">
+        <span>📖 葉片回憶錄</span>
+        <span id="memoryTag" class="text-[10px] text-muted font-normal">（點擊樹上任意葉片可隨時重溫）</span>
+      </div>
+      <p id="memoryText" class="text-xs text-[#6B645B] italic leading-relaxed">
+        「點擊樹上帶有號碼的葉片，隨時重溫當時寫下的溫暖小事。」
+      </p>
+    </div>
+
+    <!-- Secondary Actions -->
+    <div class="grid grid-cols-2 gap-2 pt-1 border-t border-[#EAE4DC]">
+      <button id="btnDemo" class="py-1.5 px-2.5 rounded-xl bg-white hover:bg-washi border border-[#E3DDD4] text-xs text-ochre font-medium transition-colors flex items-center justify-center gap-1 shadow-sm">
+        <span>🚀 體驗滿 21 葉大樹</span>
+      </button>
+      <button id="btnReset" class="py-1.5 px-2.5 rounded-xl bg-white hover:bg-washi border border-[#E3DDD4] text-xs text-muted transition-colors flex items-center justify-center gap-1 shadow-sm">
+        <span>🔄 重置本樹</span>
+      </button>
+    </div>
+
+  </div>
+
+  <!-- Footer -->
+  <footer class="text-center text-[10px] text-muted py-3 mt-2">
+    Fit21 · 每日感恩微習慣 · 守護身心靈健康
+  </footer>
+
+  <script>
+    // --- 21 Coordinates across Canopy ---
+    const SLOTS_21 = [
+      { x: 160, y: 55 },   // 1. Apex
+      { x: 135, y: 70 },   // 2. Upper left
+      { x: 185, y: 70 },   // 3. Upper right
+      { x: 105, y: 88 },   // 4. Mid upper left
+      { x: 215, y: 88 },   // 5. Mid upper right
+      { x: 75,  y: 110 },  // 6. Left outer
+      { x: 245, y: 110 },  // 7. Right outer
+      { x: 55,  y: 140 },  // 8. Left flank
+      { x: 265, y: 140 },  // 9. Right flank
+      { x: 45,  y: 175 },  // 10. Low left outer
+      { x: 275, y: 175 },  // 11. Low right outer
+      { x: 80,  y: 170 },  // 12. Low left inner
+      { x: 240, y: 170 },  // 13. Low right inner
+      { x: 110, y: 135 },  // 14. Mid left
+      { x: 210, y: 135 },  // 15. Mid right
+      { x: 135, y: 115 },  // 16. Center left
+      { x: 185, y: 115 },  // 17. Center right
+      { x: 160, y: 95 },   // 18. Center high
+      { x: 135, y: 155 },  // 19. Low center left
+      { x: 185, y: 155 },  // 20. Low center right
+      { x: 160, y: 135 }   // 21. Core heart
+    ];
+
+    const TREE_THEMES = [
+      { name: "翡翠常青樹", trunk: "#54463A", leaf: "#3D5A45", flower: "#C46B78", fruit: "#C88E3E" },
+      { name: "浪漫粉櫻樹", trunk: "#4D3B47", leaf: "#D4838F", flower: "#C45B6B", fruit: "#D89A50" },
+      { name: "金黃銀杏樹", trunk: "#524336", leaf: "#C88E3E", flower: "#D4838F", fruit: "#A85D28" }
+    ];
+
+    const PROMPTS = [
+      "早晨喝了一杯香濃甘甜的熱拿鐵 ☕",
+      "同事主動給了我很棒的肯定與支援 💬",
+      "今天提早了十分鐘出門，心情特別從容平靜 🚶",
+      "下班路上看到了粉紫色的晚霞，美得像一幅畫 🌅",
+      "媽媽傳訊息叮嚀晚上會變冷要多穿外套 🧥",
+      "順利修好了一個卡了兩天很棘手的難題 💻",
+      "晚上洗了一個舒舒服服的熱水澡，整個人徹底放鬆 🛁",
+      "好朋友突然寄來了一張手寫明信片，非常感動 💌",
+      "今天走滿了一萬步，身體感覺很有活力 🏃",
+      "吃到了剛出爐熱氣騰騰的香酥可頌 🥐"
+    ];
+    let promptIdx = 0;
+
+    // --- State & LocalStorage ---
+    const STORAGE_KEY = 'fit21_gratitude_data_prod';
+    let currentTreeIndex = 0;
+    let leaves = [];
+    let selectedIndex = -1;
+
+    function loadData() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          currentTreeIndex = parsed.currentTreeIndex || 0;
+          leaves = parsed.leaves || [];
+        }
+      } catch (e) {}
+    }
+
+    function saveData() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({ currentTreeIndex, leaves }));
+      } catch (e) {}
+    }
+
+    loadData();
+
+    // DOM Elements
+    const canvas = document.getElementById('treeCanvas');
+    const ctx = canvas.getContext('2d');
+    const forestStat = document.getElementById('forestStat');
+    const leafStat = document.getElementById('leafStat');
+    const noteInput = document.getElementById('noteInput');
+    const memoryCard = document.getElementById('memoryCard');
+    const memoryTag = document.getElementById('memoryTag');
+    const memoryText = document.getElementById('memoryText');
+    const sproutNotice = document.getElementById('sproutNotice');
+    const toastCount = document.getElementById('toastCount');
+    const fullTreeModal = document.getElementById('fullTreeModal');
+    const modalTitle = document.getElementById('modalTitle');
+    const modalSub = document.getElementById('modalSub');
+    const btnNextLabel = document.getElementById('btnNextLabel');
+    const copyToast = document.getElementById('copyToast');
+
+    // Chime Sound
+    function playChime(freq = 520) {
+      try {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(freq * 1.5, audioCtx.currentTime + 0.35);
+        gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.45);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.45);
+      } catch (e) {}
+    }
+
+    // --- Render Tree ---
+    function render() {
+      ctx.clearRect(0, 0, 320, 340);
+      const theme = TREE_THEMES[currentTreeIndex % TREE_THEMES.length];
+
+      // Ground
+      const hillGrad = ctx.createLinearGradient(0, 285, 0, 340);
+      hillGrad.addColorStop(0, '#5A7A60');
+      hillGrad.addColorStop(1, '#3E5743');
+      ctx.fillStyle = hillGrad;
+      ctx.beginPath();
+      ctx.moveTo(0, 340);
+      ctx.quadraticCurveTo(160, 290, 320, 340);
+      ctx.fill();
+
+      // Trunk Base
+      ctx.save();
+      ctx.strokeStyle = theme.trunk;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+
+      ctx.beginPath();
+      ctx.moveTo(136, 335);
+      ctx.quadraticCurveTo(152, 280, 155, 230);
+      ctx.quadraticCurveTo(164, 280, 184, 335);
+      ctx.fillStyle = theme.trunk;
+      ctx.fill();
+
+      // Main Stem
+      ctx.beginPath();
+      ctx.moveTo(158, 240);
+      ctx.quadraticCurveTo(158, 190, 160, 140);
+      ctx.lineWidth = 13;
+      ctx.stroke();
+
+      // Top Branch
+      ctx.beginPath();
+      ctx.moveTo(160, 150);
+      ctx.quadraticCurveTo(160, 100, 160, 60);
+      ctx.lineWidth = 6.5;
+      ctx.stroke();
+
+      // Left Branch
+      ctx.beginPath();
+      ctx.moveTo(158, 200);
+      ctx.quadraticCurveTo(135, 160, 105, 125);
+      ctx.quadraticCurveTo(80, 100, 60, 140);
+      ctx.lineWidth = 8.5;
+      ctx.stroke();
+
+      // Far Left Branch
+      ctx.beginPath();
+      ctx.moveTo(115, 145);
+      ctx.quadraticCurveTo(80, 150, 50, 175);
+      ctx.lineWidth = 4.5;
+      ctx.stroke();
+
+      // Right Branch
+      ctx.beginPath();
+      ctx.moveTo(160, 195);
+      ctx.quadraticCurveTo(185, 155, 215, 125);
+      ctx.quadraticCurveTo(240, 100, 260, 140);
+      ctx.lineWidth = 8.5;
+      ctx.stroke();
+
+      // Far Right Branch
+      ctx.beginPath();
+      ctx.moveTo(205, 145);
+      ctx.quadraticCurveTo(240, 150, 270, 175);
+      ctx.lineWidth = 4.5;
+      ctx.stroke();
+
+      // Sub twigs
+      const twigs = [
+        [[135, 140], [135, 75]], [[185, 140], [185, 75]],
+        [[105, 125], [105, 92]], [[215, 125], [215, 92]],
+        [[160, 120], [185, 115]], [[160, 120], [135, 115]],
+        [[115, 145], [80, 170]], [[205, 145], [240, 170]]
+      ];
+      ctx.lineWidth = 3;
+      twigs.forEach(t => {
+        ctx.beginPath();
+        ctx.moveTo(t[0][0], t[0][1]);
+        ctx.lineTo(t[1][0], t[1][1]);
+        ctx.stroke();
+      });
+      ctx.restore();
+
+      // 3. Draw 21 Slots
+      for (let i = 0; i < 21; i++) {
+        const slot = SLOTS_21[i];
+        const isFilled = i < leaves.length;
+        const isSelected = (i === selectedIndex);
+
+        if (!isFilled) {
+          ctx.save();
+          ctx.beginPath();
+          ctx.arc(slot.x, slot.y, 11, 0, Math.PI * 2);
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
+          ctx.fill();
+          ctx.strokeStyle = '#C9C2B7';
+          ctx.lineWidth = 1.2;
+          ctx.setLineDash([2, 3]);
+          ctx.stroke();
+
+          ctx.fillStyle = '#A39C91';
+          ctx.font = '9px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(i + 1, slot.x, slot.y + 0.5);
+          ctx.restore();
+        } else {
+          ctx.save();
+          const leafObj = leaves[i];
+          const scale = leafObj.scale || 1.0;
+
+          ctx.translate(slot.x, slot.y);
+          ctx.scale(scale, scale);
+
+          if (isSelected) {
+            ctx.beginPath();
+            ctx.arc(0, 0, 19, 0, Math.PI * 2);
+            ctx.strokeStyle = '#C88E3E';
+            ctx.lineWidth = 2.8;
+            ctx.stroke();
+          }
+
+          const type = i % 3;
+          if (type === 1) {
+            ctx.beginPath();
+            ctx.ellipse(0, 0, 13, 8, (i % 2 === 0 ? 0.35 : -0.35), 0, Math.PI * 2);
+            ctx.fillStyle = theme.leaf;
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+            ctx.lineWidth = 1.2;
+            ctx.stroke();
+          } else if (type === 0) {
+            for (let p = 0; p < 5; p++) {
+              const a = (p * Math.PI * 2) / 5;
+              ctx.beginPath();
+              ctx.arc(Math.cos(a) * 6, Math.sin(a) * 6, 5.5, 0, Math.PI * 2);
+              ctx.fillStyle = theme.flower;
+              ctx.fill();
+            }
+            ctx.beginPath();
+            ctx.arc(0, 0, 3.8, 0, Math.PI * 2);
+            ctx.fillStyle = '#FDF6E2';
+            ctx.fill();
+          } else {
+            ctx.beginPath();
+            ctx.arc(0, 2, 9.5, 0, Math.PI * 2);
+            ctx.fillStyle = theme.fruit;
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(255,255,255,0.6)';
+            ctx.lineWidth = 1.2;
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.moveTo(0, -7);
+            ctx.quadraticCurveTo(2, -10, 4, -12);
+            ctx.strokeStyle = theme.trunk;
+            ctx.lineWidth = 1.8;
+            ctx.stroke();
+          }
+
+          ctx.fillStyle = '#FFFFFF';
+          ctx.font = 'bold 9px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(i + 1, 0, (type === 2 ? 2.5 : 0.5));
+          ctx.restore();
+        }
+      }
+    }
+
+    function updateStats() {
+      forestStat.textContent = `${currentTreeIndex} 棵`;
+      leafStat.textContent = `${leaves.length} / 21`;
+      saveData();
+    }
+
+    function selectLeaf(index) {
+      if (index >= leaves.length) {
+        memoryTag.textContent = `· 第 ${index + 1} 號枝枒`;
+        memoryText.textContent = `「這個位置正在等待你的第 ${index + 1} 個感恩小事萌發 🌿」`;
+        selectedIndex = -1;
+        render();
+        return;
+      }
+
+      selectedIndex = index;
+      render();
+      const item = leaves[index];
+      memoryTag.textContent = `· 第 ${index + 1} 片感恩葉片`;
+      memoryText.textContent = `「${item.text}」`;
+      memoryCard.classList.add('border-brand');
+      setTimeout(() => memoryCard.classList.remove('border-brand'), 400);
+      playChime(640);
+    }
+
+    function addLeaf(text) {
+      if (leaves.length >= 21) return false;
+      const idx = leaves.length;
+      leaves.push({ text, scale: 0.1 });
+
+      let sc = 0.1;
+      const t = setInterval(() => {
+        sc += 0.25;
+        if (sc >= 1.2) {
+          clearInterval(t);
+          leaves[idx].scale = 1.0;
+          render();
+        } else {
+          leaves[idx].scale = sc;
+          render();
+        }
+      }, 30);
+
+      updateStats();
+      selectLeaf(idx);
+      playChime(500 + (idx % 7) * 45);
+
+      toastCount.textContent = idx + 1;
+      sproutNotice.classList.remove('hidden');
+      setTimeout(() => sproutNotice.classList.add('hidden'), 2200);
+
+      if (leaves.length >= 21) {
+        setTimeout(celebrateFullTree, 800);
+      }
+      return true;
+    }
+
+    document.getElementById('btnSprout').addEventListener('click', () => {
+      let text = noteInput.value.trim();
+      if (!text) {
+        text = PROMPTS[promptIdx % PROMPTS.length];
+        promptIdx++;
+      }
+      addLeaf(text);
+      noteInput.value = "";
+    });
+
+    document.getElementById('btnPrompt').addEventListener('click', () => {
+      noteInput.value = PROMPTS[promptIdx % PROMPTS.length];
+      promptIdx++;
+    });
+
+    document.getElementById('btnDemo').addEventListener('click', () => {
+      let added = 0;
+      const timer = setInterval(() => {
+        if (leaves.length >= 21 || added >= 21) {
+          clearInterval(timer);
+          return;
+        }
+        addLeaf(PROMPTS[leaves.length % PROMPTS.length]);
+        added++;
+      }, 70);
+    });
+
+    document.getElementById('btnReset').addEventListener('click', () => {
+      leaves = [];
+      selectedIndex = -1;
+      updateStats();
+      render();
+      memoryText.textContent = "「已重置本樹！寫下一件感謝的事，點擊按鈕長出第 1 片葉子！」";
+    });
+
+    canvas.addEventListener('click', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const clickX = (e.clientX - rect.left) * (320 / rect.width);
+      const clickY = (e.clientY - rect.top) * (340 / rect.height);
+      let clicked = -1;
+      let minDist = 22;
+
+      for (let i = 0; i < 21; i++) {
+        const d = Math.hypot(SLOTS_21[i].x - clickX, SLOTS_21[i].y - clickY);
+        if (d < minDist) {
+          minDist = d;
+          clicked = i;
+        }
+      }
+      if (clicked !== -1) selectLeaf(clicked);
+    });
+
+    function celebrateFullTree() {
+      fullTreeModal.classList.remove('hidden');
+      setTimeout(() => fullTreeModal.classList.remove('opacity-0'), 10);
+      const theme = TREE_THEMES[currentTreeIndex % TREE_THEMES.length];
+      modalTitle.textContent = `第 ${currentTreeIndex + 1} 棵：${theme.name} 長成了！`;
+      modalSub.textContent = `已收集齊 21 件感恩，枝繁葉茂，蔚然成蔭 ✨`;
+      btnNextLabel.textContent = `🌱 種植第 ${currentTreeIndex + 2} 棵樹（邁向 ${(currentTreeIndex + 2) * 21} 篇）`;
+      playChime(880);
+    }
+
+    document.getElementById('btnNextTree').addEventListener('click', () => {
+      fullTreeModal.classList.add('opacity-0');
+      setTimeout(() => {
+        fullTreeModal.classList.add('hidden');
+        currentTreeIndex++;
+        leaves = [];
+        selectedIndex = -1;
+        updateStats();
+        render();
+        memoryText.textContent = `「太棒了！已邁入第 ${currentTreeIndex + 1} 棵大樹的栽種旅程！」`;
+      }, 300);
+    });
+
+    document.getElementById('btnCopyLine').addEventListener('click', () => {
+      const quotes = leaves.slice(0, 3).map((l, i) => `${i + 1}. ${l.text}`).join('\n');
+      const theme = TREE_THEMES[currentTreeIndex % TREE_THEMES.length];
+      const count = (currentTreeIndex + 1) * 21;
+      const text = `🌿 【Fit21 · 我的第 ${currentTreeIndex + 1} 棵感恩生命樹長成了！】\n\n這段時間我完成了 21 件生活感恩練習，今天我的小樹苗正式長成大樹，蔚然成蔭，長成了「${theme.name}」！✨\n\n🍃 摘錄幾片樹梢上的溫暖微光：\n${quotes}\n\n🌲 我的 Fit21 心靈森林：\n累積大樹：${currentTreeIndex + 1} 棵 🌳\n累積感恩：${count} 件 🌟\n下一棵新樹正在播種中！\n\n生活再忙，也別忘了停下來對日常說聲謝謝。大家今天也有遇到什麼美好嗎？❤️`;
+
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(showToast).catch(() => fallback(text));
+      } else {
+        fallback(text);
+      }
+    });
+
+    function fallback(txt) {
+      const ta = document.createElement('textarea');
+      ta.value = txt;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      showToast();
+    }
+
+    function showToast() {
+      copyToast.classList.remove('hidden');
+      setTimeout(() => copyToast.classList.add('hidden'), 3500);
+    }
+
+    // Register Service Worker for PWA
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch(() => {});
+      });
+    }
+
+    // Init
+    updateStats();
+    render();
+    if (leaves.length > 0) selectLeaf(leaves.length - 1);
+  </script>
+</body>
+</html>

@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192">
+  <rect width="192" height="192" rx="42" fill="#FAF8F5"/>
+  <rect x="2" y="2" width="188" height="188" rx="40" fill="none" stroke="#E3DDD4" stroke-width="3"/>
+  <g transform="translate(46, 36) scale(1)">
+    <path d="M 50 36 C 45 44 45 52 50 58 C 55 52 55 44 50 36 C 42 20 18 22 18 42 C 18 62 38 78 50 88 C 62 78 82 62 82 42 C 82 22 58 20 50 36 Z" 
+          fill="none" stroke="#2D2B2A" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M 50 88 C 47 93 48 97 50 99 C 52 97 53 93 50 88 Z" 
+          fill="none" stroke="#2D2B2A" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="96" y="156" font-family="'Noto Serif TC', serif, sans-serif" font-size="20" font-weight="600" letter-spacing="4" fill="#2D2B2A" text-anchor="middle">FIT21</text>
+</svg>
