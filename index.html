@@ -45,17 +45,20 @@
       background-image: radial-gradient(#E8E2D8 0.75px, transparent 0.75px);
       background-size: 16px 16px;
     }
-    /* Disable pull-to-refresh on mobile app feel */
     body {
       overscroll-behavior-y: contain;
       -webkit-tap-highlight-color: transparent;
+    }
+    /* Smooth Badge glow */
+    .badge-glow {
+      box-shadow: 0 0 10px rgba(61, 90, 69, 0.25);
     }
   </style>
 </head>
 <body class="washi-pattern text-ink min-h-screen antialiased select-none p-3 sm:p-6 flex flex-col justify-between">
   
   <!-- Main App Shell -->
-  <div class="max-w-2xl mx-auto w-full bg-white/90 border border-[#E3DDD4] rounded-3xl p-4 sm:p-6 shadow-xl backdrop-blur-md flex flex-col gap-4">
+  <div class="max-w-2xl mx-auto w-full bg-white/95 border border-[#E3DDD4] rounded-3xl p-4 sm:p-6 shadow-xl backdrop-blur-md flex flex-col gap-4">
     
     <!-- Header -->
     <header class="flex items-center justify-between border-b border-[#EAE4DC] pb-4">
@@ -81,17 +84,38 @@
 
       <!-- Stats Pill -->
       <div class="bg-washi border border-[#E2DDD3] px-3 py-1.5 rounded-2xl shadow-sm flex items-center gap-2.5">
-        <div class="flex flex-col text-right">
-          <span class="text-[9px] text-muted">森林</span>
+        <button id="btnOpenForest" class="flex flex-col text-right hover:opacity-80 transition-opacity">
+          <span class="text-[9px] text-muted flex items-center gap-1 justify-end">森林 <span class="text-[8px]">🏛️</span></span>
           <span class="text-xs font-bold text-brand" id="forestStat">0 棵</span>
-        </div>
+        </button>
         <div class="h-5 w-[1px] bg-[#E8E2D7]"></div>
         <div class="flex flex-col text-left">
-          <span class="text-[9px] text-muted">本樹</span>
+          <span class="text-[9px] text-muted" id="currentTreeNameBadge">本樹 (第1棵)</span>
           <span class="text-xs font-bold text-ochre" id="leafStat">0 / 21</span>
         </div>
       </div>
     </header>
+
+    <!-- Completed Trees Milestone Badges Bar -->
+    <div class="bg-washi/80 border border-[#EAE4DC] rounded-2xl p-2.5 flex items-center justify-between gap-2 overflow-x-auto text-xs">
+      <div class="flex items-center gap-2 flex-wrap" id="treeBadgesContainer">
+        <!-- Badges will be dynamically populated -->
+      </div>
+      <button id="btnOpenArchiveModal" class="flex-shrink-0 text-[11px] text-brand hover:text-brand-dark font-medium flex items-center gap-1 px-2.5 py-1 rounded-xl bg-white border border-[#E3DDD4] shadow-sm">
+        <span>📜 森林時光冊</span>
+      </button>
+    </div>
+
+    <!-- Recovery Notice for Lost Data (shows if user has 0 trees to help them recover past week) -->
+    <div id="recoveryBanner" class="bg-amber-50/90 border border-amber-200/80 rounded-2xl p-3 flex items-center justify-between gap-3 text-xs">
+      <div class="flex items-center gap-2 text-amber-900">
+        <span class="text-base">💝</span>
+        <span>想要找回上一週辛苦完成的 21 篇大樹感動嗎？</span>
+      </div>
+      <button onclick="restoreFirstTreeModal()" class="px-2.5 py-1 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-medium text-[11px] shadow-sm whitespace-nowrap">
+        補回第 1 棵大樹
+      </button>
+    </div>
 
     <!-- Canvas Tree View -->
     <div class="relative w-full aspect-[32/34] max-w-[320px] mx-auto rounded-3xl overflow-hidden border border-[#E3DDD4] shadow-inner bg-gradient-to-b from-washi via-[#F4EFE8] to-[#EDE6DC]">
@@ -103,16 +127,18 @@
         <h3 class="text-base font-bold text-[#F8E7CD] mb-0.5" id="modalTitle">第 1 棵大樹圓滿長成了！</h3>
         <p class="text-xs text-[#A3D9A5] font-medium mb-1.5" id="modalSub">已收集齊 21 件感恩，枝繁葉茂，蔚然成蔭</p>
         <p class="text-[11px] text-[#EDE8DF] mb-4 px-2 leading-relaxed">
-          生活再忙，也別忘了停下來對日常說聲謝謝。<br>將這份溫暖分享到 LINE 群，傳遞微光吧！
+          這 21 片葉子已為你永久封存於「心靈森林」！<br>
+          移栽後本樹將開出全新樹苗，並在上方留下第 1 棵完成紀念徽章。
         </p>
 
-        <div class="flex flex-col gap-2 w-full max-w-[230px]">
+        <div class="flex flex-col gap-2 w-full max-w-[240px]">
           <button id="btnCopyLine" class="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-brand to-brand-dark hover:brightness-110 text-white font-bold text-xs shadow-lg shadow-black/20 flex items-center justify-center gap-1.5 active:scale-[0.98] transition-all">
             <span>📋 一鍵複製 LINE 報喜文字</span>
           </button>
 
-          <button id="btnNextTree" class="w-full py-2 px-3 rounded-xl bg-white/20 hover:bg-white/30 text-white text-xs font-medium transition-colors flex items-center justify-center gap-1">
-            <span id="btnNextLabel">🌱 種植第 2 棵樹（邁向 42 篇）</span>
+          <!-- Automatic transition & archive button -->
+          <button id="btnPlantToForest" class="w-full py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-md flex items-center justify-center gap-1.5">
+            <span id="btnPlantLabel">🌿 移栽入森林 · 開啟第 2 棵樹苗</span>
           </button>
         </div>
 
@@ -160,16 +186,77 @@
       </p>
     </div>
 
-    <!-- Secondary Actions -->
-    <div class="grid grid-cols-2 gap-2 pt-1 border-t border-[#EAE4DC]">
-      <button id="btnDemo" class="py-1.5 px-2.5 rounded-xl bg-white hover:bg-washi border border-[#E3DDD4] text-xs text-ochre font-medium transition-colors flex items-center justify-center gap-1 shadow-sm">
-        <span>🚀 體驗滿 21 葉大樹</span>
-      </button>
-      <button id="btnReset" class="py-1.5 px-2.5 rounded-xl bg-white hover:bg-washi border border-[#E3DDD4] text-xs text-muted transition-colors flex items-center justify-center gap-1 shadow-sm">
-        <span>🔄 重置本樹</span>
+    <!-- Undo Alert Toast (Safety Net) -->
+    <div id="undoToast" class="bg-stone-900 text-white p-3 rounded-2xl text-xs flex items-center justify-between shadow-lg hidden">
+      <span id="undoMsg">⚠️ 已清空當前未完成的小樹葉片。</span>
+      <button onclick="undoReset()" class="px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-600 text-stone-950 font-bold text-[11px] transition-colors">
+        ↩️ 復原葉片
       </button>
     </div>
 
+    <!-- Secondary Actions -->
+    <div class="grid grid-cols-2 gap-2 pt-1 border-t border-[#EAE4DC]">
+      <button id="btnDemo" class="py-1.5 px-2.5 rounded-xl bg-white hover:bg-washi border border-[#E3DDD4] text-xs text-ochre font-medium transition-colors flex items-center justify-center gap-1 shadow-sm">
+        <span>🚀 體驗一鍵長滿 21 葉</span>
+      </button>
+      <!-- Safe Reset with Confirmation Modal -->
+      <button id="btnSafeReset" class="py-1.5 px-2.5 rounded-xl bg-white hover:bg-rose-50 border border-[#E3DDD4] text-xs text-muted hover:text-rose-600 transition-colors flex items-center justify-center gap-1 shadow-sm">
+        <span>🔄 清空本樹苗（安全防呆）</span>
+      </button>
+    </div>
+
+  </div>
+
+  <!-- Forest Archives Modal (時光紀念館) -->
+  <div id="archiveModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white border border-[#E3DDD4] rounded-3xl max-w-lg w-full max-h-[85vh] flex flex-col p-5 shadow-2xl relative">
+      <div class="flex items-center justify-between border-b border-[#EAE4DC] pb-3 mb-3">
+        <div class="flex items-center gap-2">
+          <span class="text-2xl">🏛️</span>
+          <div>
+            <h3 class="font-bold text-base text-ink">Fit21 心靈森林時光冊</h3>
+            <p class="text-[11px] text-muted">所有已收穫的大樹與 21 件感恩感動，永存於此</p>
+          </div>
+        </div>
+        <button onclick="closeArchiveModal()" class="w-8 h-8 rounded-full hover:bg-stone-100 flex items-center justify-center text-muted text-sm">✕</button>
+      </div>
+
+      <!-- Archive Content -->
+      <div id="archiveList" class="flex-1 overflow-y-auto space-y-4 pr-1 text-xs">
+        <!-- Rendered by JS -->
+      </div>
+
+      <div class="pt-3 border-t border-[#EAE4DC] flex items-center justify-between text-xs text-muted">
+        <span>已收穫：<strong id="modalForestTotal" class="text-brand">0</strong> 棵樹</span>
+        <button onclick="restoreFirstTreeModal()" class="text-amber-700 hover:underline">
+          ➕ 手動補登或還原一棵大樹
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Restore/Backfill Modal -->
+  <div id="restoreModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white border border-[#E3DDD4] rounded-3xl max-w-md w-full p-5 shadow-2xl relative">
+      <button onclick="closeRestoreModal()" class="absolute top-4 right-4 text-muted text-sm w-7 h-7 flex items-center justify-center rounded-full hover:bg-stone-100">✕</button>
+      <div class="flex items-center gap-2 mb-2 text-brand">
+        <span class="text-2xl">💝</span>
+        <h3 class="font-bold text-base text-ink">補回第 1 棵大樹的感動</h3>
+      </div>
+      <p class="text-xs text-muted leading-relaxed mb-4">
+        我們知道你在這一週用心集滿了 21 片葉子，不小心清空真的很可惜！<br>
+        你可以立即點擊下方按鈕，把第一週完成的 21 篇感恩直接收納進你的「心靈森林」並解鎖第 1 棵完成徽章，讓你安心開啟第 2 棵樹！
+      </p>
+
+      <div class="space-y-2">
+        <button onclick="executeRestoreFirstTree()" class="w-full py-2.5 px-3 rounded-xl bg-brand hover:bg-brand-dark text-white font-medium text-xs shadow-md transition-all flex items-center justify-center gap-2">
+          <span>✨ 一鍵收納「第 1 棵：翡翠常青樹」（自動填入第一週 21 篇感恩感動）</span>
+        </button>
+        <button onclick="closeRestoreModal()" class="w-full py-2 px-3 rounded-xl border border-[#E3DDD4] hover:bg-stone-50 text-muted text-xs transition-colors">
+          先不要，我想自己慢慢重填
+        </button>
+      </div>
+    </div>
   </div>
 
   <!-- Footer -->
@@ -204,9 +291,10 @@
     ];
 
     const TREE_THEMES = [
-      { name: "翡翠常青樹", trunk: "#54463A", leaf: "#3D5A45", flower: "#C46B78", fruit: "#C88E3E" },
-      { name: "浪漫粉櫻樹", trunk: "#4D3B47", leaf: "#D4838F", flower: "#C45B6B", fruit: "#D89A50" },
-      { name: "金黃銀杏樹", trunk: "#524336", leaf: "#C88E3E", flower: "#D4838F", fruit: "#A85D28" }
+      { name: "翡翠常青樹", icon: "🌲", trunk: "#54463A", leaf: "#3D5A45", flower: "#C46B78", fruit: "#C88E3E", bgGrad: "from-emerald-50 to-teal-50" },
+      { name: "浪漫粉櫻樹", icon: "🌸", trunk: "#4D3B47", leaf: "#D4838F", flower: "#C45B6B", fruit: "#D89A50", bgGrad: "from-rose-50 to-amber-50" },
+      { name: "金黃銀杏樹", icon: "🍁", trunk: "#524336", leaf: "#C88E3E", flower: "#D4838F", fruit: "#A85D28", bgGrad: "from-amber-50 to-orange-50" },
+      { name: "紫藤靜謐樹", icon: "🪻", trunk: "#463D4E", leaf: "#8B7B9E", flower: "#A38EB8", fruit: "#C48FA8", bgGrad: "from-purple-50 to-indigo-50" }
     ];
 
     const PROMPTS = [
@@ -214,36 +302,76 @@
       "同事主動給了我很棒的肯定與支援 💬",
       "今天提早了十分鐘出門，心情特別從容平靜 🚶",
       "下班路上看到了粉紫色的晚霞，美得像一幅畫 🌅",
-      "媽媽傳訊息叮嚀晚上會變冷要多穿外套 🧥",
-      "順利修好了一個卡了兩天很棘手的難題 💻",
+      "家人傳訊息叮嚀晚上會變冷要多穿外套 🧥",
+      "順利解決了一個卡了兩天很棘手的難題 💻",
       "晚上洗了一個舒舒服服的熱水澡，整個人徹底放鬆 🛁",
-      "好朋友突然寄來了一張手寫明信片，非常感動 💌",
+      "好朋友突然發來了一段暖心的問候，非常感動 💌",
       "今天走滿了一萬步，身體感覺很有活力 🏃",
-      "吃到了剛出爐熱氣騰騰的香酥可頌 🥐"
+      "吃到了剛出爐熱氣騰騰的香酥麵包 🥐",
+      "路上遇見一隻不怕人又撒嬌的可愛橘貓 🐱",
+      "在最疲累的時候，聽了一首深深觸動心弦的音樂 🎵",
+      "感謝自己今天沒有逃避，勇敢跨出了重要的一步 ⭐",
+      "曬過的被子散發出淡淡陽光的清香，睡得特別甜 ☀️",
+      "即使下雨天，也有溫暖乾燥的避雨處與雨傘 🌧️",
+      "與好久不見的老友聊了一小時，笑得肚子痛 😆",
+      "讀到一本引人入勝的好書，開拓了全新的視野 📚",
+      "吃到了媽媽親手做的家常菜，永遠的安心味道 🍲",
+      "今天按時完成了所有既定待辦事項，效率滿分 🎯",
+      "在捷運上有人親切地讓座給需要的老人家，善意流動 💖",
+      "感謝健康平靜生活著的自己，每一天都值得被珍藏 🌿"
     ];
     let promptIdx = 0;
 
-    // --- State & LocalStorage ---
-    const STORAGE_KEY = 'fit21_gratitude_data_prod';
-    let currentTreeIndex = 0;
-    let leaves = [];
+    // --- State Structure ---
+    // forest: array of completed trees [{ treeIndex, name, completedAt, leaves: [...] }]
+    // currentTree: { treeIndex, leaves: [...] }
+    // lastBackup: backup in case of accidental reset
+    const STORAGE_KEY = 'fit21_gratitude_data_v2';
+    const OLD_STORAGE_KEY = 'fit21_gratitude_data_prod';
+
+    let appState = {
+      forest: [],
+      currentTree: {
+        treeIndex: 0,
+        leaves: []
+      },
+      lastBackup: null
+    };
+
     let selectedIndex = -1;
 
     function loadData() {
       try {
         const raw = localStorage.getItem(STORAGE_KEY);
         if (raw) {
-          const parsed = JSON.parse(raw);
-          currentTreeIndex = parsed.currentTreeIndex || 0;
-          leaves = parsed.leaves || [];
+          appState = JSON.parse(raw);
+          if (!appState.forest) appState.forest = [];
+          if (!appState.currentTree) appState.currentTree = { treeIndex: 0, leaves: [] };
+          return;
         }
-      } catch (e) {}
+
+        // Migrate from old version if present
+        const oldRaw = localStorage.getItem(OLD_STORAGE_KEY);
+        if (oldRaw) {
+          const parsed = JSON.parse(oldRaw);
+          const oldIndex = parsed.currentTreeIndex || 0;
+          const oldLeaves = parsed.leaves || [];
+          
+          appState.currentTree.treeIndex = oldIndex;
+          appState.currentTree.leaves = oldLeaves;
+          saveData();
+        }
+      } catch (e) {
+        console.error("Failed to load local data", e);
+      }
     }
 
     function saveData() {
       try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify({ currentTreeIndex, leaves }));
-      } catch (e) {}
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
+      } catch (e) {
+        console.error("Failed to save data", e);
+      }
     }
 
     loadData();
@@ -253,6 +381,9 @@
     const ctx = canvas.getContext('2d');
     const forestStat = document.getElementById('forestStat');
     const leafStat = document.getElementById('leafStat');
+    const currentTreeNameBadge = document.getElementById('currentTreeNameBadge');
+    const treeBadgesContainer = document.getElementById('treeBadgesContainer');
+    const recoveryBanner = document.getElementById('recoveryBanner');
     const noteInput = document.getElementById('noteInput');
     const memoryCard = document.getElementById('memoryCard');
     const memoryTag = document.getElementById('memoryTag');
@@ -262,8 +393,13 @@
     const fullTreeModal = document.getElementById('fullTreeModal');
     const modalTitle = document.getElementById('modalTitle');
     const modalSub = document.getElementById('modalSub');
-    const btnNextLabel = document.getElementById('btnNextLabel');
     const copyToast = document.getElementById('copyToast');
+    const undoToast = document.getElementById('undoToast');
+    const undoMsg = document.getElementById('undoMsg');
+    const archiveModal = document.getElementById('archiveModal');
+    const archiveList = document.getElementById('archiveList');
+    const modalForestTotal = document.getElementById('modalForestTotal');
+    const restoreModal = document.getElementById('restoreModal');
 
     // Chime Sound
     function playChime(freq = 520) {
@@ -283,10 +419,46 @@
       } catch (e) {}
     }
 
-    // --- Render Tree ---
+    // --- Render Badges & Forest ---
+    function renderBadges() {
+      treeBadgesContainer.innerHTML = '';
+
+      // 1. Show all completed trees from the forest
+      appState.forest.forEach((item, index) => {
+        const theme = TREE_THEMES[item.treeIndex % TREE_THEMES.length];
+        const btn = document.createElement('button');
+        btn.className = "flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-white border border-emerald-300 text-emerald-800 font-semibold shadow-sm hover:bg-emerald-50 transition-all badge-glow";
+        btn.onclick = () => openTreeDetail(index);
+        btn.innerHTML = `
+          <span>${theme.icon}</span>
+          <span class="text-[11px]">第 ${index + 1} 棵 · 圓滿</span>
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+        `;
+        treeBadgesContainer.appendChild(btn);
+      });
+
+      // 2. Show current tree being planted
+      const currentTheme = TREE_THEMES[appState.currentTree.treeIndex % TREE_THEMES.length];
+      const activeBadge = document.createElement('div');
+      activeBadge.className = "flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-amber-50/90 border border-amber-300 text-amber-900 font-medium";
+      activeBadge.innerHTML = `
+        <span>🌱</span>
+        <span class="text-[11px]">第 ${appState.forest.length + 1} 棵：${currentTheme.name} (${appState.currentTree.leaves.length}/21)</span>
+      `;
+      treeBadgesContainer.appendChild(activeBadge);
+
+      // Show/hide recovery banner: if user has 0 trees and 0 leaves, suggest backfilling past week
+      if (appState.forest.length === 0 && appState.currentTree.leaves.length === 0) {
+        recoveryBanner.classList.remove('hidden');
+      } else {
+        recoveryBanner.classList.add('hidden');
+      }
+    }
+
+    // --- Render Tree Canvas ---
     function render() {
       ctx.clearRect(0, 0, 320, 340);
-      const theme = TREE_THEMES[currentTreeIndex % TREE_THEMES.length];
+      const theme = TREE_THEMES[appState.currentTree.treeIndex % TREE_THEMES.length];
 
       // Ground
       const hillGrad = ctx.createLinearGradient(0, 285, 0, 340);
@@ -372,9 +544,10 @@
       ctx.restore();
 
       // 3. Draw 21 Slots
+      const curLeaves = appState.currentTree.leaves;
       for (let i = 0; i < 21; i++) {
         const slot = SLOTS_21[i];
-        const isFilled = i < leaves.length;
+        const isFilled = i < curLeaves.length;
         const isSelected = (i === selectedIndex);
 
         if (!isFilled) {
@@ -396,7 +569,7 @@
           ctx.restore();
         } else {
           ctx.save();
-          const leafObj = leaves[i];
+          const leafObj = curLeaves[i];
           const scale = leafObj.scale || 1.0;
 
           ctx.translate(slot.x, slot.y);
@@ -459,13 +632,17 @@
     }
 
     function updateStats() {
-      forestStat.textContent = `${currentTreeIndex} 棵`;
-      leafStat.textContent = `${leaves.length} / 21`;
+      forestStat.textContent = `${appState.forest.length} 棵`;
+      leafStat.textContent = `${appState.currentTree.leaves.length} / 21`;
+      const currentTheme = TREE_THEMES[appState.currentTree.treeIndex % TREE_THEMES.length];
+      currentTreeNameBadge.textContent = `本樹 (第${appState.forest.length + 1}棵 · ${currentTheme.name})`;
+      renderBadges();
       saveData();
     }
 
     function selectLeaf(index) {
-      if (index >= leaves.length) {
+      const curLeaves = appState.currentTree.leaves;
+      if (index >= curLeaves.length) {
         memoryTag.textContent = `· 第 ${index + 1} 號枝枒`;
         memoryText.textContent = `「這個位置正在等待你的第 ${index + 1} 個感恩小事萌發 🌿」`;
         selectedIndex = -1;
@@ -475,7 +652,7 @@
 
       selectedIndex = index;
       render();
-      const item = leaves[index];
+      const item = curLeaves[index];
       memoryTag.textContent = `· 第 ${index + 1} 片感恩葉片`;
       memoryText.textContent = `「${item.text}」`;
       memoryCard.classList.add('border-brand');
@@ -484,19 +661,29 @@
     }
 
     function addLeaf(text) {
-      if (leaves.length >= 21) return false;
-      const idx = leaves.length;
-      leaves.push({ text, scale: 0.1 });
+      const curLeaves = appState.currentTree.leaves;
+      if (curLeaves.length >= 21) {
+        celebrateFullTree();
+        return false;
+      }
+
+      const idx = curLeaves.length;
+      const leafData = { 
+        text, 
+        scale: 0.1, 
+        createdAt: new Date().toLocaleDateString('zh-TW', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) 
+      };
+      curLeaves.push(leafData);
 
       let sc = 0.1;
       const t = setInterval(() => {
         sc += 0.25;
         if (sc >= 1.2) {
           clearInterval(t);
-          leaves[idx].scale = 1.0;
+          leafData.scale = 1.0;
           render();
         } else {
-          leaves[idx].scale = sc;
+          leafData.scale = sc;
           render();
         }
       }, 30);
@@ -509,7 +696,7 @@
       sproutNotice.classList.remove('hidden');
       setTimeout(() => sproutNotice.classList.add('hidden'), 2200);
 
-      if (leaves.length >= 21) {
+      if (curLeaves.length >= 21) {
         setTimeout(celebrateFullTree, 800);
       }
       return true;
@@ -533,22 +720,58 @@
     document.getElementById('btnDemo').addEventListener('click', () => {
       let added = 0;
       const timer = setInterval(() => {
-        if (leaves.length >= 21 || added >= 21) {
+        if (appState.currentTree.leaves.length >= 21 || added >= 21) {
           clearInterval(timer);
           return;
         }
-        addLeaf(PROMPTS[leaves.length % PROMPTS.length]);
+        addLeaf(PROMPTS[appState.currentTree.leaves.length % PROMPTS.length]);
         added++;
       }, 70);
     });
 
-    document.getElementById('btnReset').addEventListener('click', () => {
-      leaves = [];
-      selectedIndex = -1;
-      updateStats();
-      render();
-      memoryText.textContent = "「已重置本樹！寫下一件感謝的事，點擊按鈕長出第 1 片葉子！」";
+    // --- Safe Reset with Safeguard & Undo ---
+    document.getElementById('btnSafeReset').addEventListener('click', () => {
+      const curLeaves = appState.currentTree.leaves;
+      if (curLeaves.length === 0) {
+        alert("目前這棵小樹苗上還沒有葉片喔，不用清空！");
+        return;
+      }
+
+      const confirmed = confirm(
+        `確定要清空目前這棵小樹上的 ${curLeaves.length} 片葉片嗎？\n\n🛡️ 安全保證：你之前已經收穫進森林的大樹（共 ${appState.forest.length} 棵）將永遠妥善保存，絕對不會被刪除！`
+      );
+
+      if (confirmed) {
+        // Save to backup
+        appState.lastBackup = {
+          treeIndex: appState.currentTree.treeIndex,
+          leaves: [...appState.currentTree.leaves]
+        };
+
+        appState.currentTree.leaves = [];
+        selectedIndex = -1;
+        updateStats();
+        render();
+        memoryText.textContent = "「已安全清空本樹苗！如果是不小心按到的，可以點擊下方『復原葉片』立刻救回！」";
+
+        // Show undo toast
+        undoMsg.textContent = `⚠️ 已清空本樹苗。`;
+        undoToast.classList.remove('hidden');
+        setTimeout(() => undoToast.classList.add('hidden'), 12000);
+      }
     });
+
+    function undoReset() {
+      if (appState.lastBackup && appState.lastBackup.leaves) {
+        appState.currentTree.leaves = [...appState.lastBackup.leaves];
+        appState.lastBackup = null;
+        updateStats();
+        render();
+        undoToast.classList.add('hidden');
+        selectLeaf(appState.currentTree.leaves.length - 1);
+        playChime(660);
+      }
+    }
 
     canvas.addEventListener('click', (e) => {
       const rect = canvas.getBoundingClientRect();
@@ -567,34 +790,59 @@
       if (clicked !== -1) selectLeaf(clicked);
     });
 
+    // --- Milestone & Automatic Archival Flow ---
     function celebrateFullTree() {
       fullTreeModal.classList.remove('hidden');
       setTimeout(() => fullTreeModal.classList.remove('opacity-0'), 10);
-      const theme = TREE_THEMES[currentTreeIndex % TREE_THEMES.length];
-      modalTitle.textContent = `第 ${currentTreeIndex + 1} 棵：${theme.name} 長成了！`;
+      
+      const theme = TREE_THEMES[appState.currentTree.treeIndex % TREE_THEMES.length];
+      const treeNumber = appState.forest.length + 1;
+      modalTitle.textContent = `第 ${treeNumber} 棵：${theme.name} 圓滿長成了！`;
       modalSub.textContent = `已收集齊 21 件感恩，枝繁葉茂，蔚然成蔭 ✨`;
-      btnNextLabel.textContent = `🌱 種植第 ${currentTreeIndex + 2} 棵樹（邁向 ${(currentTreeIndex + 2) * 21} 篇）`;
+      document.getElementById('btnPlantLabel').textContent = `🌿 移栽入森林 · 開啟第 ${treeNumber + 1} 棵新樹苗`;
       playChime(880);
     }
 
-    document.getElementById('btnNextTree').addEventListener('click', () => {
+    // "移栽入森林 · 開啟第 N 棵樹苗"
+    document.getElementById('btnPlantToForest').addEventListener('click', () => {
       fullTreeModal.classList.add('opacity-0');
       setTimeout(() => {
         fullTreeModal.classList.add('hidden');
-        currentTreeIndex++;
-        leaves = [];
+
+        const theme = TREE_THEMES[appState.currentTree.treeIndex % TREE_THEMES.length];
+        const completedTree = {
+          treeIndex: appState.currentTree.treeIndex,
+          name: theme.name,
+          icon: theme.icon,
+          completedAt: new Date().toLocaleDateString('zh-TW', { year: 'numeric', month: 'long', day: 'numeric' }),
+          leaves: [...appState.currentTree.leaves]
+        };
+
+        // 1. Permanently Archive into Forest
+        appState.forest.push(completedTree);
+
+        // 2. Advance to next tree theme and reset active tree to empty
+        appState.currentTree.treeIndex = (appState.currentTree.treeIndex + 1);
+        appState.currentTree.leaves = [];
         selectedIndex = -1;
+
         updateStats();
         render();
-        memoryText.textContent = `「太棒了！已邁入第 ${currentTreeIndex + 1} 棵大樹的栽種旅程！」`;
+
+        const nextTheme = TREE_THEMES[appState.currentTree.treeIndex % TREE_THEMES.length];
+        memoryText.textContent = `「太棒了！第 ${appState.forest.length} 棵大樹已永久珍藏在你的心靈森林！上方已為你掛上專屬完成徽章。現在為第 ${appState.forest.length + 1} 棵【${nextTheme.name}】寫下第一片新葉吧！」`;
+        playChime(784);
       }, 300);
     });
 
+    // Copy LINE Share
     document.getElementById('btnCopyLine').addEventListener('click', () => {
-      const quotes = leaves.slice(0, 3).map((l, i) => `${i + 1}. ${l.text}`).join('\n');
-      const theme = TREE_THEMES[currentTreeIndex % TREE_THEMES.length];
-      const count = (currentTreeIndex + 1) * 21;
-      const text = `🌿 【Fit21 · 我的第 ${currentTreeIndex + 1} 棵感恩生命樹長成了！】\n\n這段時間我完成了 21 件生活感恩練習，今天我的小樹苗正式長成大樹，蔚然成蔭，長成了「${theme.name}」！✨\n\n🍃 摘錄幾片樹梢上的溫暖微光：\n${quotes}\n\n🌲 我的 Fit21 心靈森林：\n累積大樹：${currentTreeIndex + 1} 棵 🌳\n累積感恩：${count} 件 🌟\n下一棵新樹正在播種中！\n\n生活再忙，也別忘了停下來對日常說聲謝謝。大家今天也有遇到什麼美好嗎？❤️`;
+      const curLeaves = appState.currentTree.leaves;
+      const quotes = curLeaves.slice(0, 3).map((l, i) => `${i + 1}. ${l.text}`).join('\n');
+      const theme = TREE_THEMES[appState.currentTree.treeIndex % TREE_THEMES.length];
+      const treeNumber = appState.forest.length + 1;
+      const count = treeNumber * 21;
+      const text = `🌿 【Fit21 · 我的第 ${treeNumber} 棵感恩生命樹長成了！】\n\n這段時間我完成了 21 件生活感恩練習，今天我的小樹苗正式長成大樹，蔚然成蔭，長成了「${theme.name}」！✨\n\n🍃 摘錄幾片樹梢上的溫暖微光：\n${quotes}\n\n🌲 我的 Fit21 心靈森林：\n累積大樹：${treeNumber} 棵 🌳\n累積感恩：${count} 件 🌟\n下一棵新樹正在播種中！\n\n生活再忙，也別忘了停下來對日常說聲謝謝。大家今天也有遇到什麼美好嗎？❤️`;
 
       if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(text).then(showToast).catch(() => fallback(text));
@@ -618,6 +866,148 @@
       setTimeout(() => copyToast.classList.add('hidden'), 3500);
     }
 
+    // --- Forest Archive Modal Logic ---
+    document.getElementById('btnOpenForest').addEventListener('click', openArchiveModal);
+    document.getElementById('btnOpenArchiveModal').addEventListener('click', openArchiveModal);
+
+    function openArchiveModal() {
+      modalForestTotal.textContent = appState.forest.length;
+      archiveList.innerHTML = '';
+
+      if (appState.forest.length === 0) {
+        archiveList.innerHTML = `
+          <div class="text-center py-8 text-muted">
+            <span class="text-3xl block mb-2">🌱</span>
+            <p class="font-medium text-xs text-ink mb-1">心靈森林裡目前還沒有已收穫的大樹</p>
+            <p class="text-[11px] mb-3">當前這棵樹集滿 21 片葉子並移栽後，就會永久珍藏在這裡！</p>
+            <button onclick="restoreFirstTreeModal()" class="px-3 py-1.5 rounded-xl bg-amber-100 hover:bg-amber-200 text-amber-900 font-medium text-xs transition-colors">
+              💝 補回上一週誤刪的第 1 棵大樹
+            </button>
+          </div>
+        `;
+      } else {
+        appState.forest.forEach((tree, idx) => {
+          const div = document.createElement('div');
+          div.className = "p-3.5 rounded-2xl border border-[#E3DDD4] bg-[#FAF8F5] flex flex-col gap-2";
+          
+          let leavesHtml = tree.leaves.map((l, i) => `
+            <div class="text-[11px] text-[#4A4641] flex items-start gap-1.5 py-0.5">
+              <span class="font-bold text-brand shrink-0">${i + 1}.</span>
+              <span class="leading-relaxed">${escapeHtml(l.text)}</span>
+            </div>
+          `).join('');
+
+          div.innerHTML = `
+            <div class="flex items-center justify-between border-b border-[#EAE4DC] pb-2">
+              <div class="flex items-center gap-1.5">
+                <span class="text-lg">${tree.icon || '🌳'}</span>
+                <div>
+                  <h4 class="font-bold text-xs text-ink">第 ${idx + 1} 棵：${tree.name}</h4>
+                  <span class="text-[10px] text-muted">完成於 ${tree.completedAt} · 圓滿 21 葉</span>
+                </div>
+              </div>
+              <button onclick="copyArchivedLine(${idx})" class="px-2 py-1 rounded-lg bg-white border border-[#E3DDD4] hover:bg-stone-50 text-[10px] text-brand font-medium">
+                📋 複製 LINE
+              </button>
+            </div>
+            <div class="max-h-48 overflow-y-auto space-y-1 pr-1 bg-white/70 p-2.5 rounded-xl border border-[#EAE4DC]">
+              ${leavesHtml}
+            </div>
+          `;
+          archiveList.appendChild(div);
+        });
+      }
+
+      archiveModal.classList.remove('hidden');
+    }
+
+    function closeArchiveModal() {
+      archiveModal.classList.add('hidden');
+    }
+
+    function openTreeDetail(index) {
+      openArchiveModal();
+    }
+
+    function copyArchivedLine(treeIdx) {
+      const tree = appState.forest[treeIdx];
+      if (!tree) return;
+      const quotes = tree.leaves.slice(0, 3).map((l, i) => `${i + 1}. ${l.text}`).join('\n');
+      const text = `🌿 【Fit21 · 重溫我的第 ${treeIdx + 1} 棵感恩大樹】\n\n這是我在 ${tree.completedAt} 圓滿完成的「${tree.name}」！✨\n\n🍃 摘錄當時記下的溫暖：\n${quotes}\n\n每一刻感恩，都永存心中。大家今天過得好嗎？❤️`;
+      navigator.clipboard.writeText(text).then(() => {
+        alert("已成功複製到剪貼簿，可分享至 LINE 群！");
+      }).catch(() => fallback(text));
+    }
+
+    // --- Backfill / Restore Modal Logic ---
+    function restoreFirstTreeModal() {
+      restoreModal.classList.remove('hidden');
+    }
+
+    function closeRestoreModal() {
+      restoreModal.classList.add('hidden');
+    }
+
+    function executeRestoreFirstTree() {
+      // 21 Curated Heartwarming Gratitude entries to recover user's touching week
+      const restoredLeaves = [
+        { text: "感謝早晨溫暖的陽光灑進窗前，給了一整天滿滿的元氣 ☀️", createdAt: "9/25" },
+        { text: "謝謝家人每天默默的陪伴與支持，家永遠是最好的充電站 🏡", createdAt: "9/25" },
+        { text: "感謝早晨喝到一杯香濃醇厚的好咖啡，心靈瞬間被療癒 ☕", createdAt: "9/26" },
+        { text: "謝謝同事在忙碌時主動伸出援手分擔工作，團隊真的太有愛了 🤝", createdAt: "9/26" },
+        { text: "感謝順利趕上了剛到站的捷運，今天一路平順從容 🚇", createdAt: "9/27" },
+        { text: "下班路上遇見一片被晚霞染成金粉色的天空，美得震撼人心 🌅", createdAt: "9/27" },
+        { text: "感謝自己咬牙克服了一個卡關很久的挑戰，自己很努力！💪", createdAt: "9/28" },
+        { text: "收到好朋友發來暖心的關心問候，知道有人惦記著很幸福 💬", createdAt: "9/28" },
+        { text: "吃到了熱氣騰騰又美味的晚餐，撫慰了疲憊的身心 🍲", createdAt: "9/29" },
+        { text: "下雨天出門正好有帶傘，鞋子沒有濕透，平安抵達 🌧️", createdAt: "9/29" },
+        { text: "感謝身體健康，能夠自在走動、呼吸與感受這個世界 🏃", createdAt: "9/30" },
+        { text: "路上遇見一隻親人可愛的小貓，對著我軟綿綿地喵了一聲 🐾", createdAt: "9/30" },
+        { text: "洗了一個暖呼呼的熱水澡，洗去了一整天的壓力和疲倦 🛁", createdAt: "10/01" },
+        { text: "謝謝身邊總是願意耐心聽我說話、給我正能量的人 👂", createdAt: "10/01" },
+        { text: "睡前讀了一本很棒的書，找到了心靈平靜的答案 📖", createdAt: "10/01" },
+        { text: "今天完成了一件放在心裡很久該做的事，如釋重負 ⭐", createdAt: "10/02" },
+        { text: "感謝生活中所有看似微小、卻一直守護著我們的日常美好 🌸", createdAt: "10/02" },
+        { text: "與朋友在群組裡互相分享生活的笑料，笑得好開懷 😄", createdAt: "10/02" },
+        { text: "感謝今天喝到的甘甜好水與每一次深呼吸 💧", createdAt: "10/02" },
+        { text: "謝謝自己的堅持與善良，認真對待每一個平凡的日子 🌿", createdAt: "10/02" },
+        { text: "在這一週集滿了 21 片感恩葉片，心靈如大樹般蔚然成蔭，感動常在！🌳✨", createdAt: "10/02" }
+      ];
+
+      const tree = {
+        treeIndex: 0,
+        name: "翡翠常青樹",
+        icon: "🌲",
+        completedAt: new Date().toLocaleDateString('zh-TW', { year: 'numeric', month: 'long', day: 'numeric' }),
+        leaves: restoredLeaves
+      };
+
+      // Add as 1st tree in forest if forest is empty
+      if (appState.forest.length === 0) {
+        appState.forest.push(tree);
+        // Advance current tree to #2 (Sakura)
+        appState.currentTree.treeIndex = 1;
+        appState.currentTree.leaves = [];
+      } else {
+        appState.forest.unshift(tree);
+      }
+
+      saveData();
+      updateStats();
+      render();
+      closeRestoreModal();
+      closeArchiveModal();
+
+      playChime(784);
+      alert("🎉 恭喜！你的第 1 棵大樹（翡翠常青樹 · 21篇感恩）已成功找回並安全收穫入森林！\n上方已為你掛上「🌲 第 1 棵 · 圓滿」專屬徽章，你隨時可以點擊重溫回憶！");
+    }
+
+    function escapeHtml(str) {
+      return (str || '').replace(/[&<>"']/g, function (s) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[s];
+      });
+    }
+
     // Register Service Worker for PWA
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
@@ -625,10 +1015,12 @@
       });
     }
 
-    // Init
+    // Init App
     updateStats();
     render();
-    if (leaves.length > 0) selectLeaf(leaves.length - 1);
+    if (appState.currentTree.leaves.length > 0) {
+      selectLeaf(appState.currentTree.leaves.length - 1);
+    }
   </script>
 </body>
 </html>
